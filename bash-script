@@ -1,0 +1,81 @@
+Running a complex series of commands directly in the terminal can sometimes lead to issues due to the nuances of shell syntax and environment. It's generally easier to manage and debug a script when it's saved as a separate file. Here’s how you can convert the series of commands into a script and run it.
+
+### Steps to Create and Run the Script
+
+1. **Create the Script File**:
+   - Open a text editor and create a new file, e.g., `find_files.sh`.
+
+2. **Copy the Script into the File**:
+   - Copy the following script into `find_files.sh`.
+
+```bash
+#!/bin/bash
+
+# Create the list of unique modules
+echo "Unique file list: " > INPUT_NUMBER.txt
+declare -A seen
+
+# Debug file to log the process
+debug_file="debug_log.txt"
+echo "Debug Log:" > "$debug_file"
+
+# Find all files with 3-letter extensions starting with c
+for file in $(find . -type f -regex '.*/.*\.[cC]...'); do
+    echo "Processing file: $file" >> "$debug_file"
+    filename=$(basename "$file")  # Extracts the filename from the full path
+    name="${filename%.*}"         # Extracts the base name (without extension)
+    ext="${filename##*.}"         # Extracts the extension
+    
+    # Handle priority for .cob over .cbl, but include other extensions
+    if [[ -z "${seen[$name]}" ]]; then
+        seen[$name]="$file"
+        echo "Added: $file" >> "$debug_file"
+    elif [[ "${ext}" == "cob" && "${seen[$name]}" == *".cbl" ]]; then
+        seen[$name]="$file"
+        echo "Replaced with .cob: $file" >> "$debug_file"
+    elif [[ "${ext}" != "cbl" && "${ext}" != "cob" ]]; then
+        seen[$name"_$ext"]="$file"
+        echo "Added with other extension: $file" >> "$debug_file"
+    fi
+done
+
+# Print the contents of the seen array for debugging
+echo "Seen array contents:" >> "$debug_file"
+for key in "${!seen[@]}"; do
+    echo "$key -> ${seen[$key]}" >> "$debug_file"
+done
+
+# Print the list of unique files containing 'INPUT-NUMBER'
+for file in "${seen[@]}"; do
+    if grep -q 'INPUT-NUMBER' "$file"; then
+        echo "$file" >> INPUT_NUMBER.txt
+    fi
+done
+
+# Count unique entries where 'INPUT-NUMBER' is found
+unique_count=$(grep -l 'INPUT-NUMBER' "${seen[@]}" | wc -l)
+echo "Unique file Count: " >> INPUT_NUMBER.txt
+echo "$unique_count" >> INPUT_NUMBER.txt
+
+# Print the debug log for review
+cat "$debug_file"
+```
+
+3. **Make the Script Executable**:
+   - Open a terminal and navigate to the directory where you saved `find_files.sh`.
+   - Run the command: `chmod +x find_files.sh` to make the script executable.
+
+4. **Run the Script**:
+   - Execute the script by running: `./find_files.sh`.
+
+### Explanation of the Script
+
+- **Shebang**: `#!/bin/bash` tells the system to use the Bash shell to interpret the script.
+- **Debug File**: A debug log file `debug_log.txt` is created to log each step.
+- **Find Command**: Searches for files with 3-letter extensions starting with `c`.
+- **Processing Loop**: Processes each file found, logging actions to the debug file.
+- **Seen Array**: Handles duplicates with priority given to `.cob` over `.cbl`, and includes other extensions.
+- **Grep and Count**: Searches for 'INPUT-NUMBER' in the files and counts the occurrences.
+- **Output**: The results are written to `INPUT_NUMBER.txt`, and the debug log is printed.
+
+By putting the commands into a script file, you can manage and debug them more effectively. Running the script as a file ensures that the entire sequence of commands is executed in a controlled environment.
